@@ -4,6 +4,7 @@ import argparse
 import sys
 import psutil
 import time
+import ipaddress
 
 class PingTool:
     # Define constants
@@ -56,7 +57,6 @@ class PingTool:
         else:  # IPv6
             # IPv6 global unicast range: 2000:: to 3FFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF
             # Get the first hextet
-            import ipaddress
             addr = ipaddress.IPv6Address(ip)
             addr_int = int(addr)
             # 2000::/3 range
@@ -83,7 +83,6 @@ class PingTool:
             return 224 <= first_octet <= 239
         else:  # IPv6
             # IPv6 multicast addresses start with FF00::/8 (first byte is 0xFF)
-            import ipaddress
             addr = ipaddress.IPv6Address(ip)
             # Check if first byte is 0xFF
             return addr.packed[0] == 0xFF
@@ -144,7 +143,6 @@ class PingTool:
         # IPv6 multicast MAC address conversion:
         # The MAC address starts with 33:33
         # The lower 32 bits of the IPv6 address are mapped to the lower 32 bits of the MAC address
-        import ipaddress
         addr = ipaddress.IPv6Address(ip)
         addr_bytes = addr.packed
         
@@ -288,23 +286,13 @@ class PingTool:
                 data = b'PingData'
 
                 # For ICMPv6, checksum calculation includes IPv6 pseudo header
-                # IPv6 Pseudo Header: Source Address (16 bytes) + Destination Address (16 bytes) + 
-                #                     Upper-Layer Packet Length (4 bytes) + Zero (3 bytes) + Next Header (1 byte)
                 src_ip = src_addr if src_addr else '::'
-                
-                # Convert addresses to binary
-                import ipaddress
-                src_bytes = ipaddress.IPv6Address(src_ip).packed
-                dst_bytes = ipaddress.IPv6Address(dst_addr).packed
                 
                 # ICMPv6 packet length
                 icmp_length = len(icmp_header) + len(data)
                 
-                # Next Header = 58 (ICMPv6)
-                next_header = 58
-                
-                # Construct pseudo header
-                pseudo_header = src_bytes + dst_bytes + struct.pack('!I', icmp_length) + struct.pack('!BBB', 0, 0, next_header)
+                # Create IPv6 pseudo header
+                pseudo_header = self.create_ipv6_pseudo_header(src_ip, dst_addr, icmp_length)
 
                 # Calculate checksum
                 icmp_checksum = self.calculate_checksum(pseudo_header + icmp_header + data)
@@ -438,23 +426,13 @@ class PingTool:
                 data = b'PingData'
 
                 # For ICMPv6, checksum calculation includes IPv6 pseudo header
-                # IPv6 Pseudo Header: Source Address (16 bytes) + Destination Address (16 bytes) + 
-                #                     Upper-Layer Packet Length (4 bytes) + Zero (3 bytes) + Next Header (1 byte)
                 src_ip = src_addr if src_addr else '::'
-                
-                # Convert addresses to binary
-                import ipaddress
-                src_bytes = ipaddress.IPv6Address(src_ip).packed
-                dst_bytes = ipaddress.IPv6Address(dst_addr).packed
                 
                 # ICMPv6 packet length
                 icmp_length = len(icmp_header) + len(data)
                 
-                # Next Header = 58 (ICMPv6)
-                next_header = 58
-                
-                # Construct pseudo header
-                pseudo_header = src_bytes + dst_bytes + struct.pack('!I', icmp_length) + struct.pack('!BBB', 0, 0, next_header)
+                # Create IPv6 pseudo header
+                pseudo_header = self.create_ipv6_pseudo_header(src_ip, dst_addr, icmp_length)
 
                 # Calculate checksum
                 icmp_checksum = self.calculate_checksum(pseudo_header + icmp_header + data)
@@ -509,6 +487,30 @@ class PingTool:
         checksum = ~checksum & 0xFFFF
         
         return checksum
+
+    def create_ipv6_pseudo_header(self, src_addr, dst_addr, upper_layer_packet_length, next_header=58):
+        """
+        Create IPv6 pseudo header for checksum calculation
+        
+        Args:
+            src_addr (str): Source IPv6 address
+            dst_addr (str): Destination IPv6 address
+            upper_layer_packet_length (int): Length of upper layer packet (ICMPv6)
+            next_header (int): Next header value (58 for ICMPv6)
+            
+        Returns:
+            bytes: IPv6 pseudo header
+        """
+        # Convert addresses to binary
+        src_bytes = ipaddress.IPv6Address(src_addr).packed
+        dst_bytes = ipaddress.IPv6Address(dst_addr).packed
+        
+        # Construct pseudo header:
+        # Source Address (16 bytes) + Destination Address (16 bytes) + 
+        # Upper-Layer Packet Length (4 bytes) + Zero (3 bytes) + Next Header (1 byte)
+        pseudo_header = src_bytes + dst_bytes + struct.pack('!I', upper_layer_packet_length) + struct.pack('!BBB', 0, 0, next_header)
+        
+        return pseudo_header
 
 
 
