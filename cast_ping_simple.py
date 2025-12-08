@@ -406,7 +406,7 @@ class PingTool:
                     sock.setsockopt(socket.SOL_IPV6, socket.IPV6_MULTICAST_HOPS, struct.pack('i', 32))
                 except Exception as e2:
                     print(f"Warning: Alternative method also failed: {e2}")
-            # TODO：Implement IPv6 multicast packet sending
+            
             for i in range(count):
                 # Construct ICMPv6 Echo Request packet
                 # According to RFC 4443, ICMPv6 Echo Request:
