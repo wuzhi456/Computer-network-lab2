@@ -190,9 +190,12 @@ class PingTool:
             else:
                 # Create IPv4 raw socket
                 sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
-                # Allow IPv4 socket to send multicast packets
+                # Configure IPv4 socket for multicast
                 if is_multicast:
-                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                    # Set multicast TTL (Time To Live) - controls how many hops the packet can traverse
+                    sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 32)
+                    # Allow receiving own multicast packets (loopback)
+                    sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
 
             return sock
         except PermissionError:
